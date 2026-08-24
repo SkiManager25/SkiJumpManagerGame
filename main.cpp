@@ -5,6 +5,8 @@
 #include <ctime>
 #include <algorithm>
 #include <iomanip>
+#include <fstream>
+#include <sstream>
 
 class Zawodnik {
 public:
@@ -83,16 +85,67 @@ WynikSkoku wykonajSkok(Zawodnik&z, const Skocznia& s, double wiatr) {
     return {z.imie, odleglosc, punktyOdleglosc, punktyStyl, rekompensataWiatru, suma};
 }
 
+const std::string PLIK_ZAPISU = "kadra.txt";
+
+void zapiszKadre(const std::vector<Zawodnik>& kadra) {
+    std::ofstream plik(PLIK_ZAPISU);
+    if (!plik) {
+        std::cout << "Blad; nie mozna otworzyc pliku do zapisu.\n";
+        return;
+    }
+    for (const auto& z : kadra) {
+        plik << z.imie << ";" << z.technika << ";" << z.lot << ";" << z.ladowanie << "\n";
+    }
+    plik.close();
+    std::cout << "Zapisano kadre do pliku" << PLIK_ZAPISU << "\n";
+}
+
+std::vector<Zawodnik> wczytajKadre() {
+    std::vector<Zawodnik> kadra;
+    std::ifstream plik(PLIK_ZAPISU);
+
+    if (!plik) {
+        return kadra;
+    }
+
+    std::string linia;
+    while (std::getline(plik, linia)) {
+        std::stringstream ss(linia);
+        std::string imie, technikaStr, lotStr, ladowanieStr;
+
+        std::getline(ss, imie, ';');
+        std::getline(ss, technikaStr, ';');
+        std::getline(ss, lotStr, ';');
+        std::getline(ss, ladowanieStr, ';');
+
+        if (imie.empty()) continue;
+
+        int technika = std::stoi(technikaStr);
+        int lot = std::stoi(lotStr);
+        int ladowanie = std::stoi(ladowanieStr);
+
+        kadra.push_back(Zawodnik(imie, technika, lot, ladowanie));
+    }
+    plik.close();
+    return kadra;
+}
+
 int main() {
     std::srand(static_cast<unsigned>(std::time(nullptr)));
 
-    Skocznia wielkaKrokiew("Wielka Krokiew", 125, 1.8);
+    std::vector<Zawodnik> kadra = wczytajKadre();
 
-    std::vector<Zawodnik> kadra = {
-        Zawodnik("Kamil Stoch", 85, 90, 80),
-        Zawodnik("Dawid Kubacki", 88, 82, 85),
-        Zawodnik("Piotr Zyla", 80, 85, 78)
-    };
+    if (kadra.empty()) {
+        std::cout << "Brak zapisu - tworze nowa kadre startowa.\n\n";
+        kadra.push_back(Zawodnik("Kamil Stoch", 85, 90, 80));
+        kadra.push_back(Zawodnik("Dawid Kubacki", 88, 82, 85));
+        kadra.push_back(Zawodnik("Piotr Zyla", 80, 85, 78));
+        zapiszKadre(kadra);
+    } else {
+        std::cout << "Wczytano zapisana kadre (" << kadra.size() << " zawodnikow).\n\n";
+    }
+
+    Skocznia wielkaKrokiew("Wielka Krokiew", 125, 1.8);
 
     std::cout << "=== Konkurs na " << wielkaKrokiew.nazwa << " (K-" << wielkaKrokiew.punktK << ") ===\n\n";
 
@@ -120,6 +173,8 @@ int main() {
     for (size_t i = 0; i < wyniki.size(); i++) {
         std::cout << (i + 1) << ". " << wyniki[i].imieZawodnika << " - " << wyniki[i].suma << " pkt\n";
     }
+
+    zapiszKadre(kadra);
 
     return 0;
 }

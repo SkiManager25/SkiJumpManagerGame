@@ -1,0 +1,3 @@
+Kamil Stoch;85;90;80
+Dawid Kubacki;88;82;85
+Piotr Zyla;80;85;78

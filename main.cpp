@@ -1,13 +1,14 @@
+#include <SFML/Graphics.hpp>
 #include <iostream>
 #include <string>
 #include <vector>
 #include <cstdlib>
 #include <ctime>
 #include <algorithm>
-#include <iomanip>
-#include <fstream>
 #include <sstream>
-#include <map>
+#include <fstream>
+
+// ---------- LOGIKA GRY ----------
 
 class Zawodnik {
 public:
@@ -73,24 +74,18 @@ double policzPunktyStylu(std::vector<double> noty) {
 
 WynikSkoku wykonajSkok(Zawodnik& z, const Skocznia& s, double wiatr) {
     z.wylosujForme();
-
     double odleglosc = symulujOdleglosc(z, s);
     double punktyOdleglosc = s.punktyBazowe() + (odleglosc - s.punktK) * s.wartoscMetra;
-
     std::vector<double> noty = wylosujNotySedziowskie(z.ladowanie);
     double punktyStyl = policzPunktyStylu(noty);
-
     double rekompensataWiatru = wiatr * -6.0;
     double suma = punktyOdleglosc + punktyStyl + rekompensataWiatru;
-
     return {z.imie, odleglosc, punktyOdleglosc, punktyStyl, rekompensataWiatru, suma};
 }
 
 double punktyZaMiejsce(int miejsce) {
     static std::vector<double> tabela = {100, 80, 60, 50, 45, 40, 36, 32, 29, 26, 24, 22, 20, 18, 16, 15, 14, 13, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1};
-    if (miejsce >= 1 && miejsce <= (int)tabela.size()) {
-        return tabela[miejsce - 1];
-    }
+    if (miejsce >= 1 && miejsce <= (int)tabela.size()) return tabela[miejsce - 1];
     return 0.0;
 }
 
@@ -98,10 +93,7 @@ const std::string PLIK_ZAPISU = "kadra.txt";
 
 void zapiszKadre(const std::vector<Zawodnik>& kadra) {
     std::ofstream plik(PLIK_ZAPISU);
-    if (!plik) {
-        std::cout << "Blad: nie mozna otworzyc pliku do zapisu.\n";
-        return;
-    }
+    if (!plik) return;
     for (const auto& z : kadra) {
         plik << z.imie << ";" << z.technika << ";" << z.lot << ";" << z.ladowanie << ";" << z.punktyGeneralne << "\n";
     }
@@ -111,56 +103,45 @@ void zapiszKadre(const std::vector<Zawodnik>& kadra) {
 std::vector<Zawodnik> wczytajKadre() {
     std::vector<Zawodnik> kadra;
     std::ifstream plik(PLIK_ZAPISU);
-
-    if (!plik) {
-        return kadra;
-    }
+    if (!plik) return kadra;
 
     std::string linia;
     while (std::getline(plik, linia)) {
         std::stringstream ss(linia);
         std::string imie, technikaStr, lotStr, ladowanieStr, punktyStr;
-
         std::getline(ss, imie, ';');
         std::getline(ss, technikaStr, ';');
         std::getline(ss, lotStr, ';');
         std::getline(ss, ladowanieStr, ';');
         std::getline(ss, punktyStr, ';');
-
         if (imie.empty()) continue;
-
         Zawodnik z(imie, std::stoi(technikaStr), std::stoi(lotStr), std::stoi(ladowanieStr));
         if (!punktyStr.empty()) z.punktyGeneralne = std::stod(punktyStr);
-
         kadra.push_back(z);
     }
     plik.close();
     return kadra;
 }
 
-void rozegrajKonkurs(std::vector<Zawodnik*>& sklad, const Skocznia& skocznia) {
-    std::cout << "\n=== Konkurs na " << skocznia.nazwa << " (K-" << skocznia.punktK << ") ===\n\n";
+std::string rozegrajKonkurs(std::vector<Zawodnik*>& sklad, const Skocznia& skocznia) {
+    std::stringstream wynikTekst;
+    wynikTekst << "=== " << skocznia.nazwa << " (K-" << skocznia.punktK << ") ===\n";
 
     std::vector<WynikSkoku> wyniki;
-
     for (auto* zawodnik : sklad) {
         double wiatr = (std::rand() % 21 - 10) / 10.0;
-        WynikSkoku w = wykonajSkok(*zawodnik, skocznia, wiatr);
-        wyniki.push_back(w);
+        wyniki.push_back(wykonajSkok(*zawodnik, skocznia, wiatr));
     }
 
     std::sort(wyniki.begin(), wyniki.end(), [](const WynikSkoku& a, const WynikSkoku& b) {
         return a.suma > b.suma;
     });
 
-    std::cout << std::fixed << std::setprecision(1);
     for (size_t i = 0; i < wyniki.size(); i++) {
         int miejsce = i + 1;
         double pktGeneralne = punktyZaMiejsce(miejsce);
-
-        std::cout << miejsce << ". " << wyniki[i].imieZawodnika
-                   << " - " << wyniki[i].suma << " pkt konkursu"
-                   << " (+" << pktGeneralne << " do generalki)\n";
+        wynikTekst << miejsce << ". " << wyniki[i].imieZawodnika << " - "
+                   << (int)wyniki[i].suma << " pkt (+" << (int)pktGeneralne << ")\n";
 
         for (auto* zawodnik : sklad) {
             if (zawodnik->imie == wyniki[i].imieZawodnika) {
@@ -169,76 +150,193 @@ void rozegrajKonkurs(std::vector<Zawodnik*>& sklad, const Skocznia& skocznia) {
             }
         }
     }
+    wynikTekst << "\n";
+    return wynikTekst.str();
 }
 
-void pokazKlasyfikacjeGeneralna(std::vector<Zawodnik> kadra) {
-    std::sort(kadra.begin(), kadra.end(), [](const Zawodnik& a, const Zawodnik& b) {
-        return a.punktyGeneralne > b.punktyGeneralne;
+std::string klasyfikacjaGeneralnaTekst(std::vector<Zawodnik*>& sklad) {
+    std::vector<Zawodnik*> posortowani = sklad;
+    std::sort(posortowani.begin(), posortowani.end(), [](Zawodnik* a, Zawodnik* b) {
+        return a->punktyGeneralne > b->punktyGeneralne;
     });
 
-    std::cout << "\n=== KLASYFIKACJA GENERALNA ===\n";
-    for (size_t i = 0; i < kadra.size(); i++) {
-        std::cout << (i + 1) << ". " << kadra[i].imie << " - " << kadra[i].punktyGeneralne << " pkt\n";
+    std::stringstream tekst;
+    tekst << "=== KLASYFIKACJA GENERALNA ===\n";
+    for (size_t i = 0; i < posortowani.size(); i++) {
+        tekst << (i + 1) << ". " << posortowani[i]->imie << " - "
+              << (int)posortowani[i]->punktyGeneralne << " pkt\n";
     }
+    return tekst.str();
 }
 
-std::vector<Zawodnik*> wybierzSklad(std::vector<Zawodnik>& kadra, int iluWybrac) {
-    std::cout << "\n=== Twoja kadra ===\n";
-    for (size_t i = 0; i < kadra.size(); i++) {
-        std::cout << (i + 1) << ". " << kadra[i].imie
-                   << " (Technika: " << kadra[i].technika
-                   << ", Lot: " << kadra[i].lot
-                   << ", Ladowanie: " << kadra[i].ladowanie << ")\n";
-    }
+// ---------- UI ----------
 
-    std::vector<Zawodnik*> sklad;
-    std::cout << "\nWybierz " << iluWybrac << " zawodnikow na sezon (wpisz numery oddzielone spacja): ";
+struct PrzyciskZawodnika {
+    std::string imie;
+    sf::RectangleShape prostokat;
+    sf::Text tekst;
+    bool wybrany = false;
 
-    for (int i = 0; i < iluWybrac; i++) {
-        int wybor;
-        std::cin >> wybor;
-        if (wybor >= 1 && wybor <= (int)kadra.size()) {
-            sklad.push_back(&kadra[wybor - 1]);
-        }
-    }
+    PrzyciskZawodnika(const std::string& im, const sf::Font& font)
+        : imie(im), tekst(font, im, 24) {}
+};
 
-    return sklad;
-}
+enum class Ekran { WYBOR_SKLADU, WYNIKI };
 
 int main() {
     std::srand(static_cast<unsigned>(std::time(nullptr)));
 
-    std::vector<Zawodnik> kadra = wczytajKadre();
+    sf::RenderWindow window(sf::VideoMode({800, 700}), "Ski Jumping Manager");
 
+    sf::Font font;
+    if (!font.openFromFile("arial.ttf")) {
+        return -1;
+    }
+
+    std::vector<Zawodnik> kadra = wczytajKadre();
     if (kadra.empty()) {
-        std::cout << "Brak zapisu - tworze nowa kadre startowa.\n";
         kadra.push_back(Zawodnik("Kamil Stoch", 85, 90, 80));
         kadra.push_back(Zawodnik("Dawid Kubacki", 88, 82, 85));
         kadra.push_back(Zawodnik("Piotr Zyla", 80, 85, 78));
         kadra.push_back(Zawodnik("Aleksander Zniszczol", 75, 78, 72));
         kadra.push_back(Zawodnik("Pawel Wasek", 78, 80, 76));
         kadra.push_back(Zawodnik("Jakub Wolny", 74, 76, 70));
-    } else {
-        std::cout << "Wczytano zapisana kadre (" << kadra.size() << " zawodnikow).\n";
+    }
+    for (auto& z : kadra) z.punktyGeneralne = 0;
+
+    const int MAX_WYBOR = 4;
+    const float SZEROKOSC_PRZYCISKU = 400.f;
+    const float WYSOKOSC_PRZYCISKU = 50.f;
+    const float ODSTEP = 10.f;
+    const float START_Y = 80.f;
+
+    std::vector<PrzyciskZawodnika> przyciski;
+    for (size_t i = 0; i < kadra.size(); i++) {
+        przyciski.emplace_back(kadra[i].imie, font);
+        przyciski[i].prostokat.setSize({SZEROKOSC_PRZYCISKU, WYSOKOSC_PRZYCISKU});
+        przyciski[i].prostokat.setPosition({200.f, START_Y + i * (WYSOKOSC_PRZYCISKU + ODSTEP)});
+        przyciski[i].prostokat.setFillColor(sf::Color(50, 60, 80));
+        przyciski[i].prostokat.setOutlineColor(sf::Color::White);
+        przyciski[i].prostokat.setOutlineThickness(2.f);
+        przyciski[i].tekst.setFillColor(sf::Color::White);
+        przyciski[i].tekst.setPosition({215.f, START_Y + i * (WYSOKOSC_PRZYCISKU + ODSTEP) + 10.f});
     }
 
-    std::vector<Skocznia> kalendarz = {
-        Skocznia("Wielka Krokiew", 125, 1.8),
-        Skocznia("Innsbruck (Bergisel)", 120, 1.8),
-        Skocznia("Willingen (Muehlenkopfschanze)", 130, 1.8),
-        Skocznia("Wisla (Malinka)", 120, 1.8)
-    };
+    sf::RectangleShape przyciskZatwierdz({200.f, 50.f});
+    przyciskZatwierdz.setPosition({300.f, 500.f});
+    przyciskZatwierdz.setFillColor(sf::Color(30, 120, 30));
 
-    std::vector<Zawodnik*> sklad = wybierzSklad(kadra, 4);
+    sf::Text tekstZatwierdz(font, "Zatwierdz sklad", 22);
+    tekstZatwierdz.setFillColor(sf::Color::White);
+    tekstZatwierdz.setPosition({315.f, 515.f});
 
-    for (const auto& skocznia : kalendarz) {
-        rozegrajKonkurs(sklad, skocznia);
+    sf::Text naglowek(font, "Wybierz 4 zawodnikow", 30);
+    naglowek.setFillColor(sf::Color::White);
+    naglowek.setPosition({230.f, 20.f});
+
+    sf::Text komunikatBledu(font, "", 20);
+    komunikatBledu.setFillColor(sf::Color::Red);
+    komunikatBledu.setPosition({230.f, 570.f});
+
+    Ekran aktualnyEkran = Ekran::WYBOR_SKLADU;
+
+    // Elementy ekranu wynikow
+    sf::Text tekstWynikow(font, "", 18);
+    tekstWynikow.setFillColor(sf::Color::White);
+    tekstWynikow.setPosition({30.f, 20.f});
+
+    sf::RectangleShape przyciskZakoncz({200.f, 50.f});
+    przyciskZakoncz.setPosition({300.f, 630.f});
+    przyciskZakoncz.setFillColor(sf::Color(120, 30, 30));
+
+    sf::Text tekstZakoncz(font, "Zakoncz", 22);
+    tekstZakoncz.setFillColor(sf::Color::White);
+    tekstZakoncz.setPosition({345.f, 645.f});
+
+    while (window.isOpen()) {
+        while (const std::optional event = window.pollEvent()) {
+            if (event->is<sf::Event::Closed>())
+                window.close();
+
+            if (const auto* mouseEvent = event->getIf<sf::Event::MouseButtonPressed>()) {
+                if (mouseEvent->button == sf::Mouse::Button::Left) {
+                    sf::Vector2f pozycjaMyszy(static_cast<float>(mouseEvent->position.x),
+                                               static_cast<float>(mouseEvent->position.y));
+
+                    if (aktualnyEkran == Ekran::WYBOR_SKLADU) {
+                        int iluWybranych = 0;
+                        for (auto& p : przyciski) if (p.wybrany) iluWybranych++;
+
+                        for (auto& p : przyciski) {
+                            if (p.prostokat.getGlobalBounds().contains(pozycjaMyszy)) {
+                                if (p.wybrany) p.wybrany = false;
+                                else if (iluWybranych < MAX_WYBOR) p.wybrany = true;
+                            }
+                        }
+
+                        if (przyciskZatwierdz.getGlobalBounds().contains(pozycjaMyszy)) {
+                            int policz = 0;
+                            for (auto& p : przyciski) if (p.wybrany) policz++;
+
+                            if (policz == MAX_WYBOR) {
+                                std::vector<Zawodnik*> sklad;
+                                for (size_t i = 0; i < przyciski.size(); i++) {
+                                    if (przyciski[i].wybrany) sklad.push_back(&kadra[i]);
+                                }
+
+                                std::vector<Skocznia> kalendarz = {
+                                    Skocznia("Wielka Krokiew", 125, 1.8),
+                                    Skocznia("Innsbruck (Bergisel)", 128, 1.8),
+                                    Skocznia("Willingen", 145, 1.8),
+                                    Skocznia("Wisla (Malinka)", 116, 1.8)
+                                };
+
+                                std::string calyTekst;
+                                for (const auto& skocznia : kalendarz) {
+                                    calyTekst += rozegrajKonkurs(sklad, skocznia);
+                                }
+                                calyTekst += klasyfikacjaGeneralnaTekst(sklad);
+
+                                tekstWynikow.setString(calyTekst);
+                                zapiszKadre(kadra);
+
+                                aktualnyEkran = Ekran::WYNIKI;
+                            } else {
+                                komunikatBledu.setString("Musisz wybrac dokladnie 4 zawodnikow!");
+                            }
+                        }
+                    } else if (aktualnyEkran == Ekran::WYNIKI) {
+                        if (przyciskZakoncz.getGlobalBounds().contains(pozycjaMyszy)) {
+                            window.close();
+                        }
+                    }
+                }
+            }
+        }
+
+        for (auto& p : przyciski) {
+            p.prostokat.setFillColor(p.wybrany ? sf::Color(30, 150, 30) : sf::Color(50, 60, 80));
+        }
+
+        window.clear(sf::Color(20, 30, 50));
+
+        if (aktualnyEkran == Ekran::WYBOR_SKLADU) {
+            window.draw(naglowek);
+            for (auto& p : przyciski) {
+                window.draw(p.prostokat);
+                window.draw(p.tekst);
+            }
+            window.draw(przyciskZatwierdz);
+            window.draw(tekstZatwierdz);
+            window.draw(komunikatBledu);
+        } else if (aktualnyEkran == Ekran::WYNIKI) {
+            window.draw(tekstWynikow);
+            window.draw(przyciskZakoncz);
+            window.draw(tekstZakoncz);
+        }
+
+        window.display();
     }
-
-    pokazKlasyfikacjeGeneralna(kadra);
-
-    zapiszKadre(kadra);
-    std::cout << "\nZapisano stan kadry do pliku " << PLIK_ZAPISU << "\n";
 
     return 0;
 }

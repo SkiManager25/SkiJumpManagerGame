@@ -138,14 +138,14 @@ std::vector<Zawodnik> wczytajKadre() {
     return kadra;
 }
 
-void rozegrajKonkurs(std::vector<Zawodnik>& kadra, const Skocznia& skocznia) {
+void rozegrajKonkurs(std::vector<Zawodnik*>& sklad, const Skocznia& skocznia) {
     std::cout << "\n=== Konkurs na " << skocznia.nazwa << " (K-" << skocznia.punktK << ") ===\n\n";
 
     std::vector<WynikSkoku> wyniki;
 
-    for (auto& zawodnik : kadra) {
+    for (auto* zawodnik : sklad) {
         double wiatr = (std::rand() % 21 - 10) / 10.0;
-        WynikSkoku w = wykonajSkok(zawodnik, skocznia, wiatr);
+        WynikSkoku w = wykonajSkok(*zawodnik, skocznia, wiatr);
         wyniki.push_back(w);
     }
 
@@ -162,9 +162,9 @@ void rozegrajKonkurs(std::vector<Zawodnik>& kadra, const Skocznia& skocznia) {
                    << " - " << wyniki[i].suma << " pkt konkursu"
                    << " (+" << pktGeneralne << " do generalki)\n";
 
-        for (auto& zawodnik : kadra) {
-            if (zawodnik.imie == wyniki[i].imieZawodnika) {
-                zawodnik.punktyGeneralne += pktGeneralne;
+        for (auto* zawodnik : sklad) {
+            if (zawodnik->imie == wyniki[i].imieZawodnika) {
+                zawodnik->punktyGeneralne += pktGeneralne;
                 break;
             }
         }
@@ -182,6 +182,29 @@ void pokazKlasyfikacjeGeneralna(std::vector<Zawodnik> kadra) {
     }
 }
 
+std::vector<Zawodnik*> wybierzSklad(std::vector<Zawodnik>& kadra, int iluWybrac) {
+    std::cout << "\n=== Twoja kadra ===\n";
+    for (size_t i = 0; i < kadra.size(); i++) {
+        std::cout << (i + 1) << ". " << kadra[i].imie
+                   << " (Technika: " << kadra[i].technika
+                   << ", Lot: " << kadra[i].lot
+                   << ", Ladowanie: " << kadra[i].ladowanie << ")\n";
+    }
+
+    std::vector<Zawodnik*> sklad;
+    std::cout << "\nWybierz " << iluWybrac << " zawodnikow na sezon (wpisz numery oddzielone spacja): ";
+
+    for (int i = 0; i < iluWybrac; i++) {
+        int wybor;
+        std::cin >> wybor;
+        if (wybor >= 1 && wybor <= (int)kadra.size()) {
+            sklad.push_back(&kadra[wybor - 1]);
+        }
+    }
+
+    return sklad;
+}
+
 int main() {
     std::srand(static_cast<unsigned>(std::time(nullptr)));
 
@@ -192,6 +215,9 @@ int main() {
         kadra.push_back(Zawodnik("Kamil Stoch", 85, 90, 80));
         kadra.push_back(Zawodnik("Dawid Kubacki", 88, 82, 85));
         kadra.push_back(Zawodnik("Piotr Zyla", 80, 85, 78));
+        kadra.push_back(Zawodnik("Aleksander Zniszczol", 75, 78, 72));
+        kadra.push_back(Zawodnik("Pawel Wasek", 78, 80, 76));
+        kadra.push_back(Zawodnik("Jakub Wolny", 74, 76, 70));
     } else {
         std::cout << "Wczytano zapisana kadre (" << kadra.size() << " zawodnikow).\n";
     }
@@ -203,8 +229,10 @@ int main() {
         Skocznia("Wisla (Malinka)", 120, 1.8)
     };
 
+    std::vector<Zawodnik*> sklad = wybierzSklad(kadra, 4);
+
     for (const auto& skocznia : kalendarz) {
-        rozegrajKonkurs(kadra, skocznia);
+        rozegrajKonkurs(sklad, skocznia);
     }
 
     pokazKlasyfikacjeGeneralna(kadra);

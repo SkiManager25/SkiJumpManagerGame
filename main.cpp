@@ -8,8 +8,6 @@
 #include <sstream>
 #include <fstream>
 
-// ---------- LOGIKA GRY ----------
-
 class Zawodnik {
 public:
     std::string imie;
@@ -206,12 +204,12 @@ struct PrzyciskZawodnika {
         : imie(z.imie), tekst(font, z.imie, 22), statystyki(font, "", 16)
     {
         std::stringstream staty;
-        staty << " TEC " << z.technika << "   LOT " << z.lot << "   LAD " << z.ladowanie;
+        staty << "TEC " << z.technika << "   LOT " << z.lot << "   LAD " << z.ladowanie;
         statystyki.setString(staty.str());
-    }    
+    }
 };
 
-enum class Ekran { WYBOR_SKLADU, WYNIKI };
+enum class Ekran { MENU_GLOWNE, WYBOR_SKLADU, WYNIKI };
 
 int main() {
     std::srand(static_cast<unsigned>(std::time(nullptr)));
@@ -255,7 +253,7 @@ int main() {
         przyciski[i].tekst.setFillColor(sf::Color::White);
         przyciski[i].tekst.setPosition({220.f, y + 6.f});
 
-        przyciski[i].statystyki.setFillColor(sf::Color(160, 180, 210))
+        przyciski[i].statystyki.setFillColor(sf::Color(160, 180, 210));
         przyciski[i].statystyki.setPosition({220.f, y + 34.f});
     }
 
@@ -275,8 +273,6 @@ int main() {
     komunikatBledu.setFillColor(sf::Color::Red);
     komunikatBledu.setPosition({230.f, 570.f});
 
-    Ekran aktualnyEkran = Ekran::WYBOR_SKLADU;
-
     std::vector<KonkursDoRysowania> wynikiDoRysowania;
 
     sf::RectangleShape przyciskZakoncz({200.f, 50.f});
@@ -286,6 +282,32 @@ int main() {
     sf::Text tekstZakoncz(font, "Zakoncz", 22);
     tekstZakoncz.setFillColor(sf::Color::White);
     tekstZakoncz.setPosition({345.f, 645.f});
+
+    sf::Text tytulGry(font, "SKI JUMPING MANAGER", 42);
+    tytulGry.setFillColor(sf::Color(255, 200, 60));
+    tytulGry.setPosition({180.f, 200.f});
+
+    sf::RectangleShape przyciskStart({250.f, 70.f});
+    przyciskStart.setPosition({325.f, 350.f});
+    przyciskStart.setFillColor(sf::Color(35, 140, 60));
+    przyciskStart.setOutlineColor(sf::Color(80, 200, 110));
+    przyciskStart.setOutlineThickness(2.f);
+
+    sf::Text tekstStart(font, "START", 28);
+    tekstStart.setFillColor(sf::Color::White);
+    tekstStart.setPosition({390.f, 372.f});
+
+    sf::RectangleShape przyciskWyjdz({250.f, 60.f});
+    przyciskWyjdz.setPosition({325.f, 440.f});
+    przyciskWyjdz.setFillColor(sf::Color(140, 35, 35));
+    przyciskWyjdz.setOutlineColor(sf::Color(200, 80, 80));
+    przyciskWyjdz.setOutlineThickness(2.f);
+
+    sf::Text tekstWyjdz(font, "WYJDZ", 24);
+    tekstWyjdz.setFillColor(sf::Color::White);
+    tekstWyjdz.setPosition({400.f, 460.f});
+
+    Ekran aktualnyEkran = Ekran::MENU_GLOWNE;
 
     while (window.isOpen()) {
         while (const std::optional event = window.pollEvent()) {
@@ -297,7 +319,14 @@ int main() {
                     sf::Vector2f pozycjaMyszy(static_cast<float>(mouseEvent->position.x),
                                                static_cast<float>(mouseEvent->position.y));
 
-                    if (aktualnyEkran == Ekran::WYBOR_SKLADU) {
+                    if (aktualnyEkran == Ekran::MENU_GLOWNE) {
+                        if (przyciskStart.getGlobalBounds().contains(pozycjaMyszy)) {
+                            aktualnyEkran = Ekran::WYBOR_SKLADU;
+                        }
+                        if (przyciskWyjdz.getGlobalBounds().contains(pozycjaMyszy)) {
+                            window.close();
+                        }
+                    } else if (aktualnyEkran == Ekran::WYBOR_SKLADU) {
                         int iluWybranych = 0;
                         for (auto& p : przyciski) if (p.wybrany) iluWybranych++;
 
@@ -332,38 +361,19 @@ int main() {
                                 wynikiDoRysowania.push_back(klasyfikacjaGeneralnaDoRysowania(sklad));
 
                                 zapiszKadre(kadra);
-
                                 aktualnyEkran = Ekran::WYNIKI;
                             } else {
                                 komunikatBledu.setString("Musisz wybrac dokladnie 4 zawodnikow!");
                             }
                         }
-                            } else if (aktualnyEkran == Ekran::WYNIKI) {
-                                float y = 20.f;
-                            for (auto& konkurs : wynikiDoRysowania) {
-                                sf::Text tytul(font, konkurs.tytul, 22);
-                                bool jestKlasyfikacja = (konkurs.tytul == "KLASYFIKACJA GENERALNA");
-                                tytul.setFillColor(jestKlasyfikacja ? sf::Color(255, 200, 60) : sf::Color(140, 180, 230));
-                                tytul.setPosition({30.f, y});
-                                window.draw(tytul);
-                                y += 32.f;
-
-                                for (auto& wiersz : konkurs.wiersze) {
-                                    sf::Text t(font, wiersz.tresc, 17);
-                                    t.setFillColor(wiersz.kolor);
-                                    t.setPosition({50.f, y});
-                                    window.draw(t);
-                                    y += 24.f;
-                                }
-                                y += 16.f;
-                            }
-
-                            window.draw(przyciskZakoncz);
-                            window.draw(tekstZakoncz);
-                            }
+                    } else if (aktualnyEkran == Ekran::WYNIKI) {
+                        if (przyciskZakoncz.getGlobalBounds().contains(pozycjaMyszy)) {
+                            window.close();
                         }
                     }
                 }
+            }
+        }
 
         for (auto& p : przyciski) {
             p.prostokat.setFillColor(p.wybrany ? sf::Color(30, 150, 30) : sf::Color(50, 60, 80));
@@ -371,17 +381,42 @@ int main() {
 
         window.clear(sf::Color(20, 30, 50));
 
-        if (aktualnyEkran == Ekran::WYBOR_SKLADU) {
+        if (aktualnyEkran == Ekran::MENU_GLOWNE) {
+            window.draw(tytulGry);
+            window.draw(przyciskStart);
+            window.draw(tekstStart);
+            window.draw(przyciskWyjdz);
+            window.draw(tekstWyjdz);
+        } else if (aktualnyEkran == Ekran::WYBOR_SKLADU) {
             window.draw(naglowek);
             for (auto& p : przyciski) {
                 window.draw(p.prostokat);
                 window.draw(p.tekst);
+                window.draw(p.statystyki);
             }
             window.draw(przyciskZatwierdz);
             window.draw(tekstZatwierdz);
             window.draw(komunikatBledu);
         } else if (aktualnyEkran == Ekran::WYNIKI) {
-            window.draw(tekstWynikow);
+            float y = 20.f;
+            for (auto& konkurs : wynikiDoRysowania) {
+                sf::Text tytul(font, konkurs.tytul, 22);
+                bool jestKlasyfikacja = (konkurs.tytul == "KLASYFIKACJA GENERALNA");
+                tytul.setFillColor(jestKlasyfikacja ? sf::Color(255, 200, 60) : sf::Color(140, 180, 230));
+                tytul.setPosition({30.f, y});
+                window.draw(tytul);
+                y += 32.f;
+
+                for (auto& wiersz : konkurs.wiersze) {
+                    sf::Text t(font, wiersz.tresc, 17);
+                    t.setFillColor(wiersz.kolor);
+                    t.setPosition({50.f, y});
+                    window.draw(t);
+                    y += 24.f;
+                }
+                y += 16.f;
+            }
+
             window.draw(przyciskZakoncz);
             window.draw(tekstZakoncz);
         }

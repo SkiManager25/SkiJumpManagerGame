@@ -123,9 +123,28 @@ std::vector<Zawodnik> wczytajKadre() {
     return kadra;
 }
 
-std::string rozegrajKonkurs(std::vector<Zawodnik*>& sklad, const Skocznia& skocznia) {
-    std::stringstream wynikTekst;
-    wynikTekst << "=== " << skocznia.nazwa << " (K-" << skocznia.punktK << ") ===\n";
+struct WierszWyniku {
+    std::string tresc;
+    sf::Color kolor;
+};
+
+struct KonkursDoRysowania {
+    std::string tytul;
+    std::vector<WierszWyniku> wiersze;
+};
+
+sf::Color kolorMiejsca(int miejsce) {
+    if (miejsce == 1) return sf::Color(255, 215, 0);
+    if (miejsce == 2) return sf::Color(200, 200, 210);
+    if (miejsce == 3) return sf::Color(205, 127, 50);
+    return sf::Color(220, 220, 220);
+}
+
+KonkursDoRysowania rozegrajKonkurs(std::vector<Zawodnik*>& sklad, const Skocznia& skocznia) {
+    KonkursDoRysowania wynik;
+    std::stringstream tytul;
+    tytul << skocznia.nazwa << "  (K-" << skocznia.punktK << ")";
+    wynik.tytul = tytul.str();
 
     std::vector<WynikSkoku> wyniki;
     for (auto* zawodnik : sklad) {
@@ -140,8 +159,12 @@ std::string rozegrajKonkurs(std::vector<Zawodnik*>& sklad, const Skocznia& skocz
     for (size_t i = 0; i < wyniki.size(); i++) {
         int miejsce = i + 1;
         double pktGeneralne = punktyZaMiejsce(miejsce);
-        wynikTekst << miejsce << ". " << wyniki[i].imieZawodnika << " - "
-                   << (int)wyniki[i].suma << " pkt (+" << (int)pktGeneralne << ")\n";
+
+        std::stringstream linia;
+        linia << miejsce << ".  " << wyniki[i].imieZawodnika << "   -   "
+              << (int)wyniki[i].suma << " pkt   (+" << (int)pktGeneralne << ")";
+
+        wynik.wiersze.push_back({linia.str(), kolorMiejsca(miejsce)});
 
         for (auto* zawodnik : sklad) {
             if (zawodnik->imie == wyniki[i].imieZawodnika) {
@@ -150,35 +173,42 @@ std::string rozegrajKonkurs(std::vector<Zawodnik*>& sklad, const Skocznia& skocz
             }
         }
     }
-    wynikTekst << "\n";
-    return wynikTekst.str();
+    return wynik;
 }
 
-std::string klasyfikacjaGeneralnaTekst(std::vector<Zawodnik*>& sklad) {
+KonkursDoRysowania klasyfikacjaGeneralnaDoRysowania(std::vector<Zawodnik*>& sklad) {
+    KonkursDoRysowania wynik;
+    wynik.tytul = "KLASYFIKACJA GENERALNA";
+
     std::vector<Zawodnik*> posortowani = sklad;
     std::sort(posortowani.begin(), posortowani.end(), [](Zawodnik* a, Zawodnik* b) {
         return a->punktyGeneralne > b->punktyGeneralne;
     });
 
-    std::stringstream tekst;
-    tekst << "=== KLASYFIKACJA GENERALNA ===\n";
     for (size_t i = 0; i < posortowani.size(); i++) {
-        tekst << (i + 1) << ". " << posortowani[i]->imie << " - "
-              << (int)posortowani[i]->punktyGeneralne << " pkt\n";
+        int miejsce = i + 1;
+        std::stringstream linia;
+        linia << miejsce << ".  " << posortowani[i]->imie << "   -   "
+              << (int)posortowani[i]->punktyGeneralne << " pkt";
+        wynik.wiersze.push_back({linia.str(), kolorMiejsca(miejsce)});
     }
-    return tekst.str();
+    return wynik;
 }
-
-// ---------- UI ----------
 
 struct PrzyciskZawodnika {
     std::string imie;
     sf::RectangleShape prostokat;
     sf::Text tekst;
+    sf::Text statystyki;
     bool wybrany = false;
 
-    PrzyciskZawodnika(const std::string& im, const sf::Font& font)
-        : imie(im), tekst(font, im, 24) {}
+    PrzyciskZawodnika(const Zawodnik& z, const sf::Font& font)
+        : imie(z.imie), tekst(font, z.imie, 22), statystyki(font, "", 16)
+    {
+        std::stringstream staty;
+        staty << " TEC " << z.technika << "   LOT " << z.lot << "   LAD " << z.ladowanie;
+        statystyki.setString(staty.str());
+    }    
 };
 
 enum class Ekran { WYBOR_SKLADU, WYNIKI };
@@ -212,14 +242,21 @@ int main() {
 
     std::vector<PrzyciskZawodnika> przyciski;
     for (size_t i = 0; i < kadra.size(); i++) {
-        przyciski.emplace_back(kadra[i].imie, font);
+        przyciski.emplace_back(kadra[i], font);
+
+        float y = START_Y + i * (WYSOKOSC_PRZYCISKU + ODSTEP);
+
         przyciski[i].prostokat.setSize({SZEROKOSC_PRZYCISKU, WYSOKOSC_PRZYCISKU});
-        przyciski[i].prostokat.setPosition({200.f, START_Y + i * (WYSOKOSC_PRZYCISKU + ODSTEP)});
-        przyciski[i].prostokat.setFillColor(sf::Color(50, 60, 80));
-        przyciski[i].prostokat.setOutlineColor(sf::Color::White);
+        przyciski[i].prostokat.setPosition({200.f, y});
+        przyciski[i].prostokat.setFillColor(sf::Color(45, 55, 75));
+        przyciski[i].prostokat.setOutlineColor(sf::Color(90, 105, 130));
         przyciski[i].prostokat.setOutlineThickness(2.f);
+
         przyciski[i].tekst.setFillColor(sf::Color::White);
-        przyciski[i].tekst.setPosition({215.f, START_Y + i * (WYSOKOSC_PRZYCISKU + ODSTEP) + 10.f});
+        przyciski[i].tekst.setPosition({220.f, y + 6.f});
+
+        przyciski[i].statystyki.setFillColor(sf::Color(160, 180, 210))
+        przyciski[i].statystyki.setPosition({220.f, y + 34.f});
     }
 
     sf::RectangleShape przyciskZatwierdz({200.f, 50.f});
@@ -240,10 +277,7 @@ int main() {
 
     Ekran aktualnyEkran = Ekran::WYBOR_SKLADU;
 
-    // Elementy ekranu wynikow
-    sf::Text tekstWynikow(font, "", 18);
-    tekstWynikow.setFillColor(sf::Color::White);
-    tekstWynikow.setPosition({30.f, 20.f});
+    std::vector<KonkursDoRysowania> wynikiDoRysowania;
 
     sf::RectangleShape przyciskZakoncz({200.f, 50.f});
     przyciskZakoncz.setPosition({300.f, 630.f});
@@ -291,13 +325,12 @@ int main() {
                                     Skocznia("Wisla (Malinka)", 116, 1.8)
                                 };
 
-                                std::string calyTekst;
+                                wynikiDoRysowania.clear();
                                 for (const auto& skocznia : kalendarz) {
-                                    calyTekst += rozegrajKonkurs(sklad, skocznia);
+                                    wynikiDoRysowania.push_back(rozegrajKonkurs(sklad, skocznia));
                                 }
-                                calyTekst += klasyfikacjaGeneralnaTekst(sklad);
+                                wynikiDoRysowania.push_back(klasyfikacjaGeneralnaDoRysowania(sklad));
 
-                                tekstWynikow.setString(calyTekst);
                                 zapiszKadre(kadra);
 
                                 aktualnyEkran = Ekran::WYNIKI;
@@ -305,14 +338,32 @@ int main() {
                                 komunikatBledu.setString("Musisz wybrac dokladnie 4 zawodnikow!");
                             }
                         }
-                    } else if (aktualnyEkran == Ekran::WYNIKI) {
-                        if (przyciskZakoncz.getGlobalBounds().contains(pozycjaMyszy)) {
-                            window.close();
+                            } else if (aktualnyEkran == Ekran::WYNIKI) {
+                                float y = 20.f;
+                            for (auto& konkurs : wynikiDoRysowania) {
+                                sf::Text tytul(font, konkurs.tytul, 22);
+                                bool jestKlasyfikacja = (konkurs.tytul == "KLASYFIKACJA GENERALNA");
+                                tytul.setFillColor(jestKlasyfikacja ? sf::Color(255, 200, 60) : sf::Color(140, 180, 230));
+                                tytul.setPosition({30.f, y});
+                                window.draw(tytul);
+                                y += 32.f;
+
+                                for (auto& wiersz : konkurs.wiersze) {
+                                    sf::Text t(font, wiersz.tresc, 17);
+                                    t.setFillColor(wiersz.kolor);
+                                    t.setPosition({50.f, y});
+                                    window.draw(t);
+                                    y += 24.f;
+                                }
+                                y += 16.f;
+                            }
+
+                            window.draw(przyciskZakoncz);
+                            window.draw(tekstZakoncz);
+                            }
                         }
                     }
                 }
-            }
-        }
 
         for (auto& p : przyciski) {
             p.prostokat.setFillColor(p.wybrany ? sf::Color(30, 150, 30) : sf::Color(50, 60, 80));

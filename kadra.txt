@@ -1,6 +1,6 @@
-Kamil Stoch;85;90;80;300
-Dawid Kubacki;88;82;85;300
-Piotr Zyla;80;85;78;360
-Aleksander Zniszczol;75;78;72;0
-Pawel Wasek;78;80;76;200
+Kamil Stoch;88;93;83;960
+Dawid Kubacki;90;87;88;1020
+Piotr Zyla;82;88;81;1090
+Aleksander Zniszczol;76;79;73;990
+Pawel Wasek;78;80;76;0
 Jakub Wolny;74;76;70;0

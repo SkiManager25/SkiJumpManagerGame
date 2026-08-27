@@ -209,7 +209,33 @@ struct PrzyciskZawodnika {
     }
 };
 
-enum class Ekran { MENU_GLOWNE, WYBOR_SKLADU, WYNIKI };
+enum class StatTyp { TECHNIKA, LOT, LADOWANIE };
+
+struct PrzyciskTreningu {
+    Zawodnik* zawodnik;
+    StatTyp typ;
+    sf::RectangleShape prostokat;
+
+    int wartosc() const {
+        if (typ == StatTyp::TECHNIKA) return zawodnik->technika;
+        if (typ == StatTyp::LOT) return zawodnik->lot;
+        return zawodnik->ladowanie;
+    }
+
+    void dodaj() {
+        if (typ == StatTyp::TECHNIKA) { if (zawodnik->technika < 100) zawodnik->technika++; }
+        else if (typ == StatTyp::LOT) { if (zawodnik->lot < 100) zawodnik->lot++; }
+        else { if (zawodnik->ladowanie < 100) zawodnik->ladowanie++; }
+    }
+
+    std::string nazwaStatu() const {
+        if (typ == StatTyp::TECHNIKA) return "TEC";
+        if (typ == StatTyp::LOT) return "LOT";
+        return "LAD";
+    }
+};
+
+enum class Ekran { MENU_GLOWNE, WYBOR_SKLADU, TRENING, WYNIKI };
 
 int main() {
     std::srand(static_cast<unsigned>(std::time(nullptr)));
@@ -307,12 +333,39 @@ int main() {
     tekstWyjdz.setFillColor(sf::Color::White);
     tekstWyjdz.setPosition({400.f, 460.f});
 
+    std::vector<Zawodnik*> sklad;
+    std::vector<PrzyciskTreningu> przyciskiTreningu;
+    int pulaTreningowa = 0;
+
+    sf::Text naglowekTreningu(font, "TRENING - rozdaj punkty", 28);
+    naglowekTreningu.setFillColor(sf::Color(255, 200, 60));
+    naglowekTreningu.setPosition({180.f, 15.f});
+
+    sf::RectangleShape przyciskRozegrajSezon({220.f, 55.f});
+    przyciskRozegrajSezon.setPosition({290.f, 630.f});
+    przyciskRozegrajSezon.setFillColor(sf::Color(35, 140, 60));
+    przyciskRozegrajSezon.setOutlineColor(sf::Color(80, 200, 110));
+    przyciskRozegrajSezon.setOutlineThickness(2.f);
+
+    sf::Text tekstRozegrajSezon(font, "ROZEGRAJ SEZON", 20);
+    tekstRozegrajSezon.setFillColor(sf::Color::White);
+    tekstRozegrajSezon.setPosition({305.f, 648.f});
+
+    float scrollOffset = 0.f;
+
     Ekran aktualnyEkran = Ekran::MENU_GLOWNE;
 
     while (window.isOpen()) {
         while (const std::optional event = window.pollEvent()) {
             if (event->is<sf::Event::Closed>())
                 window.close();
+
+            if (const auto* scrollEvent = event->getIf<sf::Event::MouseWheelScrolled>()){
+                if (aktualnyEkran == Ekran::WYNIKI) {
+                    scrollOffset -= scrollEvent->delta * 30.f;
+                    if (scrollOffset < 0.f) scrollOffset = 0.f;
+                }
+            }
 
             if (const auto* mouseEvent = event->getIf<sf::Event::MouseButtonPressed>()) {
                 if (mouseEvent->button == sf::Mouse::Button::Left) {
@@ -342,29 +395,73 @@ int main() {
                             for (auto& p : przyciski) if (p.wybrany) policz++;
 
                             if (policz == MAX_WYBOR) {
-                                std::vector<Zawodnik*> sklad;
+                                sklad.clear();
                                 for (size_t i = 0; i < przyciski.size(); i++) {
                                     if (przyciski[i].wybrany) sklad.push_back(&kadra[i]);
                                 }
 
-                                std::vector<Skocznia> kalendarz = {
-                                    Skocznia("Wielka Krokiew", 125, 1.8),
-                                    Skocznia("Innsbruck (Bergisel)", 128, 1.8),
-                                    Skocznia("Willingen", 145, 1.8),
-                                    Skocznia("Wisla (Malinka)", 116, 1.8)
-                                };
+                                pulaTreningowa = 10;
+                                przyciskiTreningu.clear();
 
-                                wynikiDoRysowania.clear();
-                                for (const auto& skocznia : kalendarz) {
-                                    wynikiDoRysowania.push_back(rozegrajKonkurs(sklad, skocznia));
+                                float yTr = 80.f;
+                                for (auto* zawodnik : sklad) {
+                                    for (int t = 0; t < 3; t++) {
+                                        PrzyciskTreningu pt;
+                                        pt.zawodnik = zawodnik;
+                                        pt.typ = static_cast<StatTyp>(t);
+                                        pt.prostokat.setSize({50.f, 50.f});
+                                        pt.prostokat.setPosition({500.f + t * 70.f, yTr});
+                                        pt.prostokat.setFillColor(sf::Color(35, 140, 60));
+                                        pt.prostokat.setOutlineColor(sf::Color::White);
+                                        pt.prostokat.setOutlineThickness(2.f);
+                                        przyciskiTreningu.push_back(pt);
+                                    }
+                                    yTr += 70.f;
                                 }
-                                wynikiDoRysowania.push_back(klasyfikacjaGeneralnaDoRysowania(sklad));
 
-                                zapiszKadre(kadra);
-                                aktualnyEkran = Ekran::WYNIKI;
+                                aktualnyEkran = Ekran::TRENING;
                             } else {
-                                komunikatBledu.setString("Musisz wybrac dokladnie 4 zawodnikow!");
+                                komunikatBledu.setString("Wybierz dokladnie 4 zawodnikow!");
                             }
+                        }
+                    } else if (aktualnyEkran == Ekran::TRENING) {
+                        if (pulaTreningowa > 0) {
+                            for (auto& pt : przyciskiTreningu) {
+                                if (pt.prostokat.getGlobalBounds().contains(pozycjaMyszy)) {
+                                    pt.dodaj();
+                                    pulaTreningowa--;
+                                    break;
+                                }
+                            }
+                        }
+
+                        if (przyciskRozegrajSezon.getGlobalBounds().contains(pozycjaMyszy)) {
+                            std::vector<Skocznia> kalendarz = {
+                                Skocznia("Wisla (Malinka)", 134, 1.8),
+                                Skocznia("Kuusamo (Ruka)", 142, 1.8),
+                                Skocznia("Klingenthal", 140, 1.8),
+                                Skocznia("Lillehammer", 140, 1.8),
+                                Skocznia("Engelberg", 140, 1.8),
+                                Skocznia("Oberstdorf", 137, 1.8),
+                                Skocznia("Garmisch-Partenkirchen", 142, 1.8),
+                                Skocznia("Innsbruck (Bergisel)", 128, 1.8),
+                                Skocznia("Bischofshofen", 142, 1.8),
+                                Skocznia("Wielka Krokiew", 140, 1.8),
+                                Skocznia("Willingen (Muhlenkopfschanze)", 147, 1.8),
+                                Skocznia("Lahti", 130, 1.8),
+                                Skocznia("Oslo (Holmenkollen)", 134, 1.8),
+                                Skocznia("Planica (Letalnica)", 240, 1.2)
+                            };
+
+                            wynikiDoRysowania.clear();
+                            for (const auto& skocznia : kalendarz) {
+                                wynikiDoRysowania.push_back(rozegrajKonkurs(sklad, skocznia));
+                            }
+                            wynikiDoRysowania.push_back(klasyfikacjaGeneralnaDoRysowania(sklad));
+
+                            zapiszKadre(kadra);
+                            scrollOffset = 0.f;
+                            aktualnyEkran = Ekran::WYNIKI;
                         }
                     } else if (aktualnyEkran == Ekran::WYNIKI) {
                         if (przyciskZakoncz.getGlobalBounds().contains(pozycjaMyszy)) {
@@ -397,8 +494,40 @@ int main() {
             window.draw(przyciskZatwierdz);
             window.draw(tekstZatwierdz);
             window.draw(komunikatBledu);
+        } else if (aktualnyEkran == Ekran::TRENING) {
+            window.draw(naglowekTreningu);
+
+            std::stringstream pulaStr;
+            pulaStr << "Pozostale punkty: " << pulaTreningowa;
+            sf::Text tekstPula(font, pulaStr.str(), 22);
+            tekstPula.setFillColor(sf::Color::White);
+            tekstPula.setPosition({30.f, 55.f});
+            window.draw(tekstPula);
+
+            Zawodnik* poprzedni = nullptr;
+            for (auto& pt : przyciskiTreningu) {
+                if (pt.zawodnik != poprzedni) {
+                    sf::Text nazwaZawodnika(font, pt.zawodnik->imie, 20);
+                    nazwaZawodnika.setFillColor(sf::Color(200, 200, 220));
+                    nazwaZawodnika.setPosition({30.f, pt.prostokat.getPosition().y + 15.f});
+                    window.draw(nazwaZawodnika);
+                    poprzedni = pt.zawodnik;
+                }
+
+                window.draw(pt.prostokat);
+
+                std::stringstream etykieta;
+                etykieta << pt.nazwaStatu() << "\n" << pt.wartosc();
+                sf::Text tekstPrzycisku(font, etykieta.str(), 13);
+                tekstPrzycisku.setFillColor(sf::Color::White);
+                tekstPrzycisku.setPosition({pt.prostokat.getPosition().x + 5.f, pt.prostokat.getPosition().y + 3.f});
+                window.draw(tekstPrzycisku);
+            }
+
+            window.draw(przyciskRozegrajSezon);
+            window.draw(tekstRozegrajSezon);
         } else if (aktualnyEkran == Ekran::WYNIKI) {
-            float y = 20.f;
+            float y = 20.f - scrollOffset;
             for (auto& konkurs : wynikiDoRysowania) {
                 sf::Text tytul(font, konkurs.tytul, 22);
                 bool jestKlasyfikacja = (konkurs.tytul == "KLASYFIKACJA GENERALNA");

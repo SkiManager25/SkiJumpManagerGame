@@ -240,7 +240,7 @@ enum class Ekran { MENU_GLOWNE, WYBOR_SKLADU, TRENING, WYNIKI };
 int main() {
     std::srand(static_cast<unsigned>(std::time(nullptr)));
 
-    sf::RenderWindow window(sf::VideoMode({800, 700}), "Ski Jumping Manager");
+    sf::RenderWindow window(sf::VideoMode({1920, 1080}), "Ski Jumping Manager", sf::State::Fullscreen);
 
     sf::Font font;
     if (!font.openFromFile("arial.ttf")) {
@@ -302,36 +302,79 @@ int main() {
     std::vector<KonkursDoRysowania> wynikiDoRysowania;
 
     sf::RectangleShape przyciskZakoncz({200.f, 50.f});
-    przyciskZakoncz.setPosition({300.f, 630.f});
+    przyciskZakoncz.setPosition({480.f, 630.f});
     przyciskZakoncz.setFillColor(sf::Color(120, 30, 30));
 
-    sf::Text tekstZakoncz(font, "Zakoncz", 22);
+    sf::Text tekstZakoncz(font, "Zakoncz gre", 20);
     tekstZakoncz.setFillColor(sf::Color::White);
-    tekstZakoncz.setPosition({345.f, 645.f});
+    tekstZakoncz.setPosition({495.f, 645.f});
 
-    sf::Text tytulGry(font, "SKI JUMPING MANAGER", 42);
+    sf::RectangleShape przyciskNastepnySezon({200.f, 50.f});
+    przyciskNastepnySezon.setPosition({120.f, 630.f});
+    przyciskNastepnySezon.setFillColor(sf::Color(30, 120, 60));
+
+    sf::Text tekstNastepnySezon(font, "Nastepny sezon", 18);
+    tekstNastepnySezon.setFillColor(sf::Color::White);
+    tekstNastepnySezon.setPosition({135.f, 645.f});
+
+    sf::VertexArray tloGradient(sf::PrimitiveType::TriangleStrip, 4);
+    tloGradient[0].position = {0.f, 0.f};
+    tloGradient[0].color = sf::Color(12, 18, 32);
+    tloGradient[1].position = {1920.f, 0.f};
+    tloGradient[1].color = sf::Color(12, 18, 32);
+    tloGradient[2].position = {0.f, 1080.f};
+    tloGradient[2].color = sf::Color(35, 55, 90);
+    tloGradient[3].position = {1920.f, 1080.f};
+    tloGradient[3].color = sf::Color(35, 55, 90);
+
+    sf::ConvexShape gora;
+    gora.setPointCount(5);
+    gora.setPoint(0, {0.f, 1080.f});
+    gora.setPoint(1, {0.f, 950.f});
+    gora.setPoint(2, {700.f, 700.f});
+    gora.setPoint(3, {1920.f, 950.f});
+    gora.setPoint(4, {1920.f, 1080.f});
+    gora.setFillColor(sf::Color(18, 26, 42));
+
+    sf::Text tytulGry(font, "SKI JUMPING MANAGER", 72);
     tytulGry.setFillColor(sf::Color(255, 200, 60));
-    tytulGry.setPosition({180.f, 200.f});
+    tytulGry.setPosition({510.f, 280.f});
 
-    sf::RectangleShape przyciskStart({250.f, 70.f});
-    przyciskStart.setPosition({325.f, 350.f});
+    sf::Text podtytulGry(font, "Zarzadzaj kadra i wygrywaj!", 26);
+    podtytulGry.setFillColor(sf::Color(160, 180, 210));
+    podtytulGry.setPosition({650.f, 380.f});
+
+    sf::RectangleShape liniaOzdobna({700.f, 3.f});
+    liniaOzdobna.setPosition({610.f, 430.f});
+    liniaOzdobna.setFillColor(sf::Color(255, 200, 60));
+
+    sf::RectangleShape cienStart({400.f, 90.f});
+    cienStart.setPosition({766.f, 508.f});
+    cienStart.setFillColor(sf::Color(0, 0, 0, 100));
+
+    sf::RectangleShape przyciskStart({400.f, 90.f});
+    przyciskStart.setPosition({760.f, 500.f});
     przyciskStart.setFillColor(sf::Color(35, 140, 60));
     przyciskStart.setOutlineColor(sf::Color(80, 200, 110));
-    przyciskStart.setOutlineThickness(2.f);
+    przyciskStart.setOutlineThickness(3.f);
 
-    sf::Text tekstStart(font, "START", 28);
+    sf::Text tekstStart(font, "START", 36);
     tekstStart.setFillColor(sf::Color::White);
-    tekstStart.setPosition({390.f, 372.f});
+    tekstStart.setPosition({895.f, 528.f});
 
-    sf::RectangleShape przyciskWyjdz({250.f, 60.f});
-    przyciskWyjdz.setPosition({325.f, 440.f});
+    sf::RectangleShape cienWyjdz({400.f, 80.f});
+    cienWyjdz.setPosition({766.f, 628.f});
+    cienWyjdz.setFillColor(sf::Color(0, 0, 0, 100));
+
+    sf::RectangleShape przyciskWyjdz({400.f, 80.f});
+    przyciskWyjdz.setPosition({760.f, 620.f});
     przyciskWyjdz.setFillColor(sf::Color(140, 35, 35));
     przyciskWyjdz.setOutlineColor(sf::Color(200, 80, 80));
-    przyciskWyjdz.setOutlineThickness(2.f);
+    przyciskWyjdz.setOutlineThickness(3.f);
 
-    sf::Text tekstWyjdz(font, "WYJDZ", 24);
+    sf::Text tekstWyjdz(font, "WYJDZ", 32);
     tekstWyjdz.setFillColor(sf::Color::White);
-    tekstWyjdz.setPosition({400.f, 460.f});
+    tekstWyjdz.setPosition({890.f, 645.f});
 
     std::vector<Zawodnik*> sklad;
     std::vector<PrzyciskTreningu> przyciskiTreningu;
@@ -467,6 +510,12 @@ int main() {
                         if (przyciskZakoncz.getGlobalBounds().contains(pozycjaMyszy)) {
                             window.close();
                         }
+                        if (przyciskNastepnySezon.getGlobalBounds().contains(pozycjaMyszy)) {
+                            for (auto& z : kadra) z.punktyGeneralne = 0;
+                            for (auto&p : przyciski) p.wybrany = false;
+                            scrollOffset = 0.f;
+                            aktualnyEkran = Ekran::WYBOR_SKLADU;
+                        }
                     }
                 }
             }
@@ -479,9 +528,15 @@ int main() {
         window.clear(sf::Color(20, 30, 50));
 
         if (aktualnyEkran == Ekran::MENU_GLOWNE) {
+            window.draw(tloGradient);
+            window.draw(gora);
             window.draw(tytulGry);
+            window.draw(podtytulGry);
+            window.draw(liniaOzdobna);
+            window.draw(cienStart);
             window.draw(przyciskStart);
             window.draw(tekstStart);
+            window.draw(cienWyjdz);
             window.draw(przyciskWyjdz);
             window.draw(tekstWyjdz);
         } else if (aktualnyEkran == Ekran::WYBOR_SKLADU) {
@@ -548,6 +603,8 @@ int main() {
 
             window.draw(przyciskZakoncz);
             window.draw(tekstZakoncz);
+            window.draw(przyciskNastepnySezon);
+            window.draw(tekstNastepnySezon);
         }
 
         window.display();
